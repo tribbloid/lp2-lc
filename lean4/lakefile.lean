@@ -14,3 +14,14 @@ lean_exe «lp2lc» where
   -- `runFrontend`) at the expense of increased binary size on Linux.
   -- Remove this line if you do not need such functionality.
   supportInterpreter := true
+
+require aesop from git
+  "https://github.com/leanprover-community/aesop" @ "stable"
+
+
+require batteries from
+  git "https://github.com/leanprover-community/batteries" @ "stable"
+
+
+-- require mathlib from git
+--   "https://github.com/leanprover-community/mathlib4"

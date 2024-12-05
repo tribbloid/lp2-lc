@@ -1,17 +1,21 @@
 **/build
 **/out
 **/output
+**/.idea
 **/.history
 
 #lean
 **/lakefile.olean
 **/lake-packages/*
 
+lean
 #jvm
 *.class
 **/*.log
 **/logs
 **/target/
+**/*.olean
+**/.lake
 
 # gradle
 **/.gradle
@@ -32,3 +36,4 @@ foo
 
 #aws key
 **/rootkey.csv
+
