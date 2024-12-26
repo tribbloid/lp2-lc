@@ -15,5 +15,7 @@ lean_exe «lp2lc» where
   -- Remove this line if you do not need such functionality.
   supportInterpreter := true
 
-require mathlib from git
-  "https://github.com/leanprover-community/mathlib4"
+-- require mathlib from git
+--   "https://github.com/leanprover-community/mathlib4"
+
+require aesop from git "https://github.com/leanprover-community/aesop"

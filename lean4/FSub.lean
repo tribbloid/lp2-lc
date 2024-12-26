@@ -1,10 +1,13 @@
 import Std.Data.HashSet
 import Std.Data.HashMap
 import Init.Meta
-import Lean.Meta.Tactic.Constructor
-import Lean.Compiler.RecFns (constructor, simp)
-
-set_option diagnostics true
+import Lean.Parser.Tactic
+import Lean.Elab.Tactic.Basic
+import Lean.Meta.Basic
+import Lean.Elab.Command
+import Lean.Attribute
+import Lean.Elab.DeclModifiers
+import Lean.ProjFns
 
 section FSub
 
@@ -76,7 +79,6 @@ def open_te_var (t : Trm) (x : Var) : Trm := open_te t (Typ.typ_fvar x)
 def open_ee_var (t : Trm) (x : Var) : Trm := open_ee t (Trm.trm_fvar x)
 
 /- Types as locally closed pre-types -/
-@[constructor]
 
 inductive type : Typ → Prop where
   | type_top :
@@ -93,7 +95,7 @@ inductive type : Typ → Prop where
       type (Typ.typ_all T1 T2)
 
 /- Terms as locally closed pre-terms -/
-@[constructor]
+
 inductive term : Trm → Prop where
   | term_var : (x : Var) →
       term (Trm.trm_fvar x)
@@ -135,7 +137,7 @@ notation:23 E "," X " ~<: " T => bindSubtype E X T  -- type variable subtyping b
 notation:23 E "," x " ~: " T => bindType E x T      -- term variable typing binding
 
 /- Well-formedness of a pre-type T in an environment E -/
-@[constructor]
+
 inductive wft : env → Typ → Prop where
   | wft_top : (E : env) →
       wft E Typ.typ_top
@@ -154,7 +156,7 @@ inductive wft : env → Typ → Prop where
 
 /- A environment E is well-formed if it contains no duplicate bindings
    and if each type in it is well-formed with respect to the environment -/
-@[constructor]
+
 inductive okt : env → Prop where
   | okt_empty :
       okt (Std.HashMap.empty)
@@ -222,7 +224,7 @@ inductive typing : env → Trm → Typ → Prop where
       typing E e T
 
 /- Values -/
-@[constructor]
+
 inductive value : Trm → Prop where
   | value_abs : (V : Typ) → (e1 : Trm) →
       term (Trm.trm_abs V e1) →
@@ -232,7 +234,7 @@ inductive value : Trm → Prop where
       value (Trm.trm_tabs V e1)
 
 /- One-step reduction -/
-@[constructor]
+
 inductive red : Trm → Trm → Prop where
   | red_app_1 : (e1 e1' e2 : Trm) →
       term e2 →
@@ -322,67 +324,16 @@ def subst_tb (Z : Var) (P : Typ) : bind → bind
   | bind.bind_sub T => bind.bind_sub (subst_tt Z P T)
   | bind.bind_typ T => bind.bind_typ (subst_tt Z P T)
 
-/- Tactic for gathering variables -/
-def gatherVars (s : Std.HashSet Var) : MetaM (Std.HashSet Var) := do
-  let vars ← s.toArray.mapM fun x => do
-    let varsSet := (← getFVarLocalDecls).foldl (init := Std.HashSet.empty) fun acc decl =>
-      acc.insert (Var.mk decl.userName.toString)
-    let fvTeSet := (← getFVarLocalDecls).foldl (init := Std.HashSet.empty) fun acc decl =>
-      match decl.type with
-      | .app (.const ``trm ..) args => acc.union (fv_te (← whnf args.back))
-      | _ => acc
-    let fvEeSet := (← getFVarLocalDecls).foldl (init := Std.HashSet.empty) fun acc decl =>
-      match decl.type with
-      | .app (.const ``trm ..) args => acc.union (fv_ee (← whnf args.back))
-      | _ => acc
-    let fvTtSet := (← getFVarLocalDecls).foldl (init := Std.HashSet.empty) fun acc decl =>
-      match decl.type with
-      | .app (.const ``typ ..) args => acc.union (fv_tt (← whnf args.back))
-      | _ => acc
-    let domSet := (← getFVarLocalDecls).foldl (init := Std.HashSet.empty) fun acc decl =>
-      match decl.type with
-      | .app (.const ``env ..) args => acc.union ((← whnf args.back).dom)
-      | _ => acc
-    pure (varsSet.union fvTeSet).union fvEeSet).union fvTtSet).union domSet
-  return vars.foldl (init := s) fun acc x => acc.insert x
+(** Gathering free names already used in the proofs *)
 
-/- Tactic for picking fresh variables -/
-syntax "pick_fresh" ident : tactic
+macro gather_vars : tactic => (tactic| do
+  let A ← gather_vars_with (fun x => x)
+  let B ← gather_vars_with (fun x => Std.HashSet.empty.insert x)
+  let C ← gather_vars_with (fun x => fv_te x)
+  let D ← gather_vars_with (fun x => fv_ee x)
+  let E ← gather_vars_with (fun x => fv_tt x)
+  let F ← gather_vars_with (fun x => x.dom)
+  return A.union B.union C.union D.union E.union F)
 
-@[tactic pick_fresh] def evalPickFresh : Tactic
-  | `(tactic| pick_fresh $x) => do
-    let vars ← gatherVars Std.HashSet.empty
-    let fresh := (← getFreshId).toString
-    let newVar := Var.mk fresh
-    if !vars.contains newVar then
-      return () -- Successfully found fresh variable
-    else
-      throwError "Failed to generate fresh variable"
-
-/- Tactic for applying rules with fresh variables -/
-syntax "apply_fresh" term "as" ident : tactic
-syntax "apply_fresh*" term "as" ident : tactic
-
-@[tactic «apply_fresh»] def evalApplyFresh : Tactic
-  | `(tactic| apply_fresh $t as $x) => do
-    let vars ← gatherVars Std.HashSet.empty
-    let fresh := (← getFreshId).toString
-    let newVar := Var.mk fresh
-    if !vars.contains newVar then
-      let tactic := `(tactic| apply $t)
-      evalTactic tactic
-    else
-      throwError "Failed to generate fresh variable"
-
-@[tactic «apply_fresh*»] def evalApplyFreshStar : Tactic
-  | `(tactic| apply_fresh* $t as $x) => do
-    let vars ← gatherVars Std.HashSet.empty
-    let fresh := (← getFreshId).toString
-    let newVar := Var.mk fresh
-    if !vars.contains newVar then
-      let tactic := `(tactic| apply $t; try assumption)
-      evalTactic tactic
-    else
-      throwError "Failed to generate fresh variable"
 
 end FSub
