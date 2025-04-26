@@ -1,0 +1,23 @@
+1. The code is written in Lean 4
+
+2. The build system is elan
+
+3. all compilation errors are displayed in LSP
+
+4. do not run terminal command to check errors
+
+
+When writing Lean 4 code:
+
+- do not use sorry
+
+- do not define new axiom unless asked to
+
+- Only use AESOP and basic tactics
+
+
+When converting Coq code to Lean 4:
+
+- each definition in Coq should be translated to a definition in Lean 4 of the same name and type signature
+
+- do not write empty body in any definition

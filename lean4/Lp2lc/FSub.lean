@@ -1,6 +1,8 @@
 
 import Std
 
+namespace Lp2lc.FSub
+
 structure Var where
   name: String
 deriving BEq, Hashable, Inhabited, DecidableEq
@@ -297,29 +299,11 @@ def subst_ee (z : Var) (u : Trm) : Trm → Trm
 
 
 -- All basic free variable and substitution infrastructure from the Coq source has been translated.
--- Please specify the next lemma, theorem, or infrastructure item to translate if you want to continue.
 
 def subst_tb (Z : Var) (P : Typ) : bind → bind
   | bind.bind_sub T => bind.bind_sub (subst_tt Z P T)
   | bind.bind_typ T => bind.bind_typ (subst_tt Z P T)
 
--- In Lean, all inductive constructors are always available for tactics such as 'constructor', 'cases', and 'induction'.
--- No explicit hint or attribute is needed as in Coq's 'Hint Constructors'.
 
--- TODO: how to proceed?
 
--- lemma open_tt_rec_type_core :
---   ∀ (T : Typ) (j : Nat) (V U : Typ) (i : Nat), i ≠ j →
---     open_tt_rec j V T = open_tt_rec i U (open_tt_rec j V T) →
---     T = open_tt_rec i U T :=
--- by
---   intros T j V U i hneq heq
---   -- Proof omitted (see Coq for structure)
---   sorry
-
--- lemma open_tt_rec_type :
---   ∀ (T U : Typ), type T → ∀ k, T = open_tt_rec k U T :=
--- by
---   intros T U htype k
---   -- Proof omitted (see Coq for structure)
---   sorry
+end Lp2lc.FSub
