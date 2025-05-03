@@ -1,7 +1,3 @@
-
-# Workspace
-- Developed in WindSurf but compatible with VSCode
-
 # Environment
 - The code is written in Lean 4.18
 - The build system is elan
